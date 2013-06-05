@@ -1,5 +1,4 @@
 (function(){
-  
   function check(subject) {
     // dont have to use the new keyword to create an instance
     if(!(this instanceof check))
@@ -18,6 +17,10 @@
       return b(args);
   };
 
+  function returnCheckNoneFunc() {
+    return check.none;
+  }
+
   check.prototype.chain = function(f) {
       return this.fold(
           function(a) {
@@ -29,39 +32,48 @@
       );
   };
   check.prototype.pass = function(x) {
-    return this.fold(function(){ return check(x);},
-                     function(){ return check.none;});
+    return this.fold(function(){ return check(x);}, returnCheckNoneFunc);
   };
   check.lift = function(n, f) {
     check.prototype[n] = function(){
-      return this.fold(f, function(){ return check.none; }, arguments);
+      return this.fold(f, returnCheckNoneFunc, arguments);
     };
+  };
+
+  check.extend = function(obj) {
+    for (var key in obj) {
+      check.lift(key, obj[key]);
+    }
   };
 
   window.check = check;
 })();
 // set all the check primitives
 (function(){
-  check.lift('equals', function(x, v) {
-    return x == v[0] ? check(x) : check.none;
-  });
-  check.lift('notEquals', function(x, v) {
-    return x != v[0] ? check(x) : check.none;
-  });
-  check.lift('strictlyEquals', function(x, v) {
-    return x === v[0] ? check(x) : check.none;
-  });
-  check.lift('strictlyNotEquals', function(x, v) {
-    return x !== v[0] ? check(x) : check.none;
-  });
-  check.lift('defined', function(x){
-    return check(typeof x).strictlyNotEquals('undefined').pass(x);
-  });
-  check.lift('notEmptyString', function(x){
-    return check(x).strictlyNotEquals('');
-  });
-  check.lift('log', function(x){
-    console.log(x);
-    return check(x);
+  check.extend({
+    equals: function(x, v) {
+      return x == v[0] ? check(x) : check.none;
+    },
+    notEquals: function(x, v) {
+      return x != v[0] ? check(x) : check.none;
+    },
+    strictlyEquals: function(x, v) {
+      return x === v[0] ? check(x) : check.none;
+    },
+    strictlyNotEquals: function(x, v) {
+      return x !== v[0] ? check(x) : check.none;
+    },
+    defined: function(x){
+      return check(typeof x).strictlyNotEquals('undefined').pass(x);
+    },
+    notDefined: function(x){
+      return check(typeof x).strictlyEquals('undefined').pass(x);
+    },
+    emptyString: function(x) {
+      return check(x).strictlyEquals('');
+    },
+    notEmptyString: function(x){
+      return check(x).strictlyNotEquals('');
+    }
   });
 })();
